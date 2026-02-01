@@ -225,7 +225,7 @@ async function importCSV() {
       let productos = [];
 
       results.data.forEach(row => {
-_toggle:      if (row.length >= 7) {
+        if (row.length >= 7) {
           let nombre = row[0];
           let precio = parseFloat(row[6]);
 
@@ -236,22 +236,24 @@ _toggle:      if (row.length >= 7) {
         }
       });
 
-      const { error: deleteError } = await db.rpc('truncate_productos');
-      if (deleteError) {
-        console.error(deleteError);
-        alert("Error al borrar productos");
+      if (productos.length === 0) {
+        alert("El CSV no contiene datos válidos");
         return;
       }
 
-      const { error: insertError } = await db.from('productos').insert(productos);
-      if (insertError) {
-        console.error(insertError);
-        alert("Error al insertar productos");
+      // UPSERT (inserta si no existe, actualiza si existe)
+      const { error } = await db
+        .from('productos')
+        .upsert(productos, { onConflict: 'nombre' });
+
+      if (error) {
+        console.error(error);
+        alert("Error al importar");
         return;
       }
 
       cargarProductos();
-      alert("Importación completada con redondeo aplicado");
+      alert("Importación completada correctamente");
     }
   });
 }
