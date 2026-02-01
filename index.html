@@ -236,7 +236,7 @@ _toggle:      if (row.length >= 7) {
         }
       });
 
-      const { error: deleteError } = await db.from('productos').delete().neq('id', '');
+      const { error: deleteError } = await db.rpc('truncate_productos');
       if (deleteError) {
         console.error(deleteError);
         alert("Error al borrar productos");
