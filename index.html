@@ -143,8 +143,9 @@ button:hover {
 
 <script>
 const SUPABASE_URL = "https://pdrscccufdmhnuimtxbe.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkcnNjY2N1ZmRtaG51aW10eGJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5MDM1ODMsImV4cCI6MjA4NTQ3OTU4M30.Q7DXpII4ZLoz9P4wZVFeX0nOO1KGRu6TZtRk_CWbHXM";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_KEY = "TU_ANON_KEY_AQUI"; // pega tu key aquí
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let productoSeleccionado = null;
 let productosGlobal = [];
@@ -154,9 +155,16 @@ function redondearAutomatico(numero) {
 }
 
 async function cargarProductos() {
-  const { data } = await supabase.from('productos').select('*');
-  productosGlobal = data;
-  mostrarLista(data);
+  const { data, error } = await db.from('productos').select('*');
+
+  if (error) {
+    console.error(error);
+    alert("Error cargando productos");
+    return;
+  }
+
+  productosGlobal = data || [];
+  mostrarLista(productosGlobal);
 }
 
 function mostrarLista(productos) {
@@ -182,19 +190,27 @@ function filtrar() {
 
 function seleccionar(id) {
   productoSeleccionado = productosGlobal.find(p => p.id === id);
+  if (!productoSeleccionado) return;
+
   document.getElementById("nombre").value = productoSeleccionado.nombre;
   document.getElementById("precio").value = productoSeleccionado.precio;
 }
 
 async function guardar() {
-  if (!productoSeleccionado) return;
+  if (!productoSeleccionado) return alert("Selecciona un producto");
 
   const nombre = document.getElementById("nombre").value;
-  const precio = document.getElementById("precio").value;
+  const precio = parseFloat(document.getElementById("precio").value);
 
-  await supabase.from('productos')
+  const { error } = await db.from('productos')
     .update({ nombre, precio })
     .eq('id', productoSeleccionado.id);
+
+  if (error) {
+    console.error(error);
+    alert("Error al guardar");
+    return;
+  }
 
   cargarProductos();
   alert("Cambios guardados");
@@ -209,7 +225,7 @@ async function importCSV() {
       let productos = [];
 
       results.data.forEach(row => {
-        if (row.length >= 7) {
+_toggle:      if (row.length >= 7) {
           let nombre = row[0];
           let precio = parseFloat(row[6]);
 
@@ -220,8 +236,19 @@ async function importCSV() {
         }
       });
 
-      await supabase.from('productos').delete().neq('id', '');
-      await supabase.from('productos').insert(productos);
+      const { error: deleteError } = await db.from('productos').delete().neq('id', '');
+      if (deleteError) {
+        console.error(deleteError);
+        alert("Error al borrar productos");
+        return;
+      }
+
+      const { error: insertError } = await db.from('productos').insert(productos);
+      if (insertError) {
+        console.error(insertError);
+        alert("Error al insertar productos");
+        return;
+      }
 
       cargarProductos();
       alert("Importación completada con redondeo aplicado");
